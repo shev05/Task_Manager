@@ -1,5 +1,8 @@
+from PyQt5.QtWidgets import QStyle
 from PyQt5.QtCore import Qt, QSortFilterProxyModel
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QIcon
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtGui import QIcon
 
 
 class ProcessTableModel(QStandardItemModel):
@@ -8,6 +11,12 @@ class ProcessTableModel(QStandardItemModel):
         self.setHorizontalHeaderLabels(["", "Имя", "PID", "ЦП", "Память", "Статус", "Пользователь"])
         self.process_icons = {}
         self.current_pids = set()
+
+        # Загружаем стандартную иконку-шестерёнку
+        self.default_icon = QIcon.fromTheme("system-run")  # Или другой подходящий вариант
+        if self.default_icon.isNull():
+            # Если тема не предоставляет иконку, создаём простую из ресурсов Qt
+            self.default_icon = QApplication.style().standardIcon(QStyle.SP_ComputerIcon)
 
     def update_data(self, gui_procs, bg_procs):
         """Обновляет данные модели на основе списков процессов"""
@@ -68,26 +77,24 @@ class ProcessTableModel(QStandardItemModel):
         icon_item = QStandardItem()
         if process_name:
             icon = self.get_process_icon(process_name)
-            if icon:
+            if not icon.isNull():
                 icon_item.setIcon(icon)
-            icon_item.setText("□" if not icon else "")
+            else:
+                # Устанавливаем иконку-шестерёнку по умолчанию
+                icon_item.setIcon(self.default_icon)
+            icon_item.setText("")  # Убираем текст полностью
+        else:
+            # Для процессов без имени тоже используем шестерёнку
+            icon_item.setIcon(self.default_icon)
+            icon_item.setText("")
         return icon_item
-
-    def update_row(self, row, proc):
-        """Обновляет данные в существующей строке"""
-        try:
-            self.item(row, 3).setText(f"{proc.get('cpu', 0):.1f}%")
-            self.item(row, 4).setText(f"{proc.get('memory', 0):.1f}%")
-            self.item(row, 5).setText(proc.get('status', 'N/A'))
-        except Exception as e:
-            print(f"Ошибка при обновлении процесса: {e}")
 
     def get_process_icon(self, process_name):
         """Возвращает иконку для процесса по его имени"""
         if process_name in self.process_icons:
             return self.process_icons[process_name]
 
-        # Сопоставление имен процессов с иконками из темы
+        # Расширенное сопоставление имен процессов с иконками
         icon_mapping = {
             'chrome': 'google-chrome',
             'firefox': 'firefox',
@@ -101,7 +108,19 @@ class ProcessTableModel(QStandardItemModel):
             'spotify': 'spotify-client',
             'telegram': 'telegram-desktop',
             'slack': 'slack',
-            'zoom': 'zoom'
+            'python': 'python',
+            'python3': 'python',
+            'python3.12': 'python',
+            'bash': 'utilities-terminal',
+            'zsh': 'utilities-terminal',
+            'ssh': 'network-wired',
+            'systemd': 'system-run',
+            'dbus': 'system-run',
+            'pipewire': 'audio-card',
+            'pulseaudio': 'audio-card',
+            'gnome': 'gnome',
+            'kde': 'kde',
+            'xdg': 'system-run'
         }
 
         name_lower = process_name.lower()
@@ -115,7 +134,19 @@ class ProcessTableModel(QStandardItemModel):
                 except:
                     continue
 
-        return None
+        # Если иконка не найдена, возвращаем пустую иконку
+        # (метод create_icon_item подставит шестерёнку)
+        return QIcon()
+
+    def update_row(self, row, proc):
+        """Обновляет данные в существующей строке"""
+        try:
+            self.item(row, 3).setText(f"{proc.get('cpu', 0):.1f}%")
+            self.item(row, 4).setText(f"{proc.get('memory', 0):.1f}%")
+            self.item(row, 5).setText(proc.get('status', 'N/A'))
+        except Exception as e:
+            print(f"Ошибка при обновлении процесса: {e}")
+
 
 
 class ProcessSortFilterProxyModel(QSortFilterProxyModel):

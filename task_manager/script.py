@@ -9,9 +9,7 @@ def main():
 
     app = QApplication(sys.argv)
     window = TaskManagerWindow()
-    print("wadadwawddawwad")
     window.show()
-    print("d")
     sys.exit(app.exec_())
 
 

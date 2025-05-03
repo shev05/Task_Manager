@@ -1,5 +1,8 @@
-from PyQt5.QtChart import QChart, QChartView, QLineSeries
-from PyQt5.QtCore import QTimer, Qt
+import sys
+import psutil
+
+from PyQt5.QtChart import QChart, QChartView, QLineSeries, QValueAxis
+from PyQt5.QtCore import QTimer, Qt, QMargins, QPointF
 from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QWidget, QTabWidget,
                              QLabel, QSizePolicy, QScrollArea)
 
@@ -61,12 +64,10 @@ class TaskManagerWindow(QMainWindow):
         scroll_layout = QVBoxLayout(scroll_widget)
         scroll_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Создаем область прокрутки
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setWidget(scroll_widget)
 
-        # Основной контейнер для содержимого
         content_widget = QWidget()
         layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(10, 10, 10, 10)
@@ -75,6 +76,30 @@ class TaskManagerWindow(QMainWindow):
         scroll_layout.addWidget(content_widget)
         scroll_layout.addStretch(1)
 
+        # Общие настройки для всех графиков
+        def create_chart():
+            chart = QChart()
+            chart.setBackgroundVisible(False)
+            chart.legend().hide()
+            chart.setMargins(QMargins(0, 0, 0, 0))
+            chart.layout().setContentsMargins(0, 0, 0, 0)
+
+            # Ось X (время)
+            axis_x = QValueAxis()
+            axis_x.setRange(0, 60)
+            axis_x.setTickCount(7)
+            axis_x.setLabelFormat("%.0f")
+            axis_x.setTitleText("Seconds ago")
+            chart.addAxis(axis_x, Qt.AlignBottom)
+
+            # Ось Y (значения)
+            axis_y = QValueAxis()
+            axis_y.setRange(0, 100)
+            axis_y.setTitleText("Usage (%)")
+            chart.addAxis(axis_y, Qt.AlignLeft)
+
+            return chart
+
         # CPU Section
         cpu_section = PerformanceWidget("Процессор")
         self.cpu_meter = ResourceMeter()
@@ -82,13 +107,12 @@ class TaskManagerWindow(QMainWindow):
         cpu_section.add_meter(self.cpu_meter)
         cpu_section.add_info(self.cpu_info_label)
 
-        # CPU Chart
-        self.cpu_chart = QChart()
+        self.cpu_chart = create_chart()
         self.cpu_series = QLineSeries()
         self.cpu_chart.addSeries(self.cpu_series)
-        self.cpu_chart.createDefaultAxes()
-        self.cpu_chart.legend().hide()
-        self.cpu_chart.setBackgroundVisible(False)
+        self.cpu_series.attachAxis(self.cpu_chart.axes(Qt.Horizontal)[0])
+        self.cpu_series.attachAxis(self.cpu_chart.axes(Qt.Vertical)[0])
+
         self.cpu_chart_view = QChartView(self.cpu_chart)
         self.cpu_chart_view.setFixedHeight(150)
         cpu_section.add_chart(self.cpu_chart_view)
@@ -102,13 +126,12 @@ class TaskManagerWindow(QMainWindow):
         memory_section.add_meter(self.memory_meter)
         memory_section.add_info(self.memory_info_label)
 
-        # Memory Chart
-        self.memory_chart = QChart()
+        self.memory_chart = create_chart()
         self.memory_series = QLineSeries()
         self.memory_chart.addSeries(self.memory_series)
-        self.memory_chart.createDefaultAxes()
-        self.memory_chart.legend().hide()
-        self.memory_chart.setBackgroundVisible(False)
+        self.memory_series.attachAxis(self.memory_chart.axes(Qt.Horizontal)[0])
+        self.memory_series.attachAxis(self.memory_chart.axes(Qt.Vertical)[0])
+
         self.memory_chart_view = QChartView(self.memory_chart)
         self.memory_chart_view.setFixedHeight(150)
         memory_section.add_chart(self.memory_chart_view)
@@ -122,33 +145,50 @@ class TaskManagerWindow(QMainWindow):
         disk_section.add_meter(self.disk_meter)
         disk_section.add_info(self.disk_info_label)
 
-        # Disk Chart
-        self.disk_chart = QChart()
+        self.disk_chart = create_chart()
         self.disk_series = QLineSeries()
         self.disk_chart.addSeries(self.disk_series)
-        self.disk_chart.createDefaultAxes()
-        self.disk_chart.legend().hide()
-        self.disk_chart.setBackgroundVisible(False)
+        self.disk_series.attachAxis(self.disk_chart.axes(Qt.Horizontal)[0])
+        self.disk_series.attachAxis(self.disk_chart.axes(Qt.Vertical)[0])
+
         self.disk_chart_view = QChartView(self.disk_chart)
         self.disk_chart_view.setFixedHeight(150)
         disk_section.add_chart(self.disk_chart_view)
 
         layout.addWidget(disk_section)
 
-        # Network Section
+        # Network Section (особые настройки для сети)
         network_section = PerformanceWidget("Сеть")
         self.network_meter = ResourceMeter()
         self.network_info_label = QLabel()
         network_section.add_meter(self.network_meter)
         network_section.add_info(self.network_info_label)
 
-        # Network Chart
         self.network_chart = QChart()
+        self.network_chart.setBackgroundVisible(False)
+        self.network_chart.legend().hide()
+        self.network_chart.setMargins(QMargins(0, 0, 0, 0))
+        self.network_chart.layout().setContentsMargins(0, 0, 0, 0)
+
+        # Ось X (время)
+        axis_x = QValueAxis()
+        axis_x.setRange(0, 60)
+        axis_x.setTickCount(7)
+        axis_x.setLabelFormat("%.0f")
+        axis_x.setTitleText("Seconds ago")
+        self.network_chart.addAxis(axis_x, Qt.AlignBottom)
+
+        # Ось Y (значения)
+        axis_y = QValueAxis()
+        axis_y.setRange(0, 3)  # Начальный диапазон для сети
+        axis_y.setTitleText("Mbps")
+        self.network_chart.addAxis(axis_y, Qt.AlignLeft)
+
         self.network_series = QLineSeries()
         self.network_chart.addSeries(self.network_series)
-        self.network_chart.createDefaultAxes()
-        self.network_chart.legend().hide()
-        self.network_chart.setBackgroundVisible(False)
+        self.network_series.attachAxis(axis_x)
+        self.network_series.attachAxis(axis_y)
+
         self.network_chart_view = QChartView(self.network_chart)
         self.network_chart_view.setFixedHeight(150)
         network_section.add_chart(self.network_chart_view)
@@ -157,6 +197,7 @@ class TaskManagerWindow(QMainWindow):
 
         layout.addStretch(1)
         self.tab_widget.addTab(scroll_area, "Производительность")
+
 
     def init_timer(self):
         """Инициализирует таймер для обновления данных"""
@@ -190,14 +231,16 @@ class TaskManagerWindow(QMainWindow):
         )
         self.update_chart(self.cpu_series, cpu_usage, "CPU Usage (%)")
 
-        # Обновление памяти
         memory_info = self.system_monitor.get_memory_info()
         self.memory_meter.set_value(memory_usage)
+
+
+
         self.memory_info_label.setText(
             f"Использовано: {memory_info['used']:.1f} GB из {memory_info['total']:.1f} GB ({memory_usage}%)\n"
             f"Доступно: {memory_info['available']:.1f} GB\n"
             f"Кэшировано: {memory_info['cached']:.1f} GB\n"
-            f"Скорость: {memory_info['speed']} MHz"
+
         )
         self.update_chart(self.memory_series, memory_usage, "Memory Usage (%)")
 
@@ -224,20 +267,31 @@ class TaskManagerWindow(QMainWindow):
         )
         self.update_chart(self.network_series, network_info['usage_percent'], "Network Usage (%)")
 
+
+
     def update_chart(self, series, new_value, title):
         """Обновляет график новым значением"""
-        # Ограничиваем количество точек на графике
-        if series.count() > 60:  # Храним 60 последних значений (1 минута при обновлении раз в секунду)
-            series.removePoints(0, series.count() - 60)
+        # Добавляем новую точку
+        current_time = series.count()
+        series.append(current_time, new_value)
 
-        # Добавляем новое значение
-        x = series.count()
-        series.append(x, new_value)
+        # Если точек больше 60, удаляем самую старую
+        if series.count() > 60:
+            series.remove(0)
+            # Сдвигаем оставшиеся точки назад
+            for i in range(series.count()):
+                point = series.pointsVector()[i]
+                series.replace(i, QPointF(i, point.y()))
 
-        # Обновляем оси
+        # Обновляем диапазон оси X
         chart = series.chart()
         axis_x = chart.axes(Qt.Horizontal)[0]
-        axis_x.setRange(max(0, x - 60), x)
-        axis_y = chart.axes(Qt.Vertical)[0]
-        axis_y.setRange(0, 100)
-        axis_y.setTitleText(title)
+        axis_x.setRange(max(0, series.count() - 60), max(60, series.count()))
+
+        # Для сетевого графика динамически обновляем масштаб
+        if title == "Network Usage (Mbps)":
+            current_max = max(point.y() for point in series.pointsVector()) if series.count() > 0 else 10
+            axis_y = chart.axes(Qt.Vertical)[0]
+            axis_y.setRange(0, max(10, current_max * 1.2))  # 20% запас сверху
+
+
