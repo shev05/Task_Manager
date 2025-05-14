@@ -113,7 +113,8 @@ class ProcessController:
     @staticmethod
     def terminate_process(pid: int) -> Tuple[bool, str]:
         try:
-            print("ilya sluha")
+
+
             proc = psutil.Process(pid)
             proc.terminate()
             return True, f"Процесс {pid} ({proc.name()}) отправлен на завершение"
@@ -122,7 +123,7 @@ class ProcessController:
 
     @staticmethod
     def kill_process(pid: int) -> Tuple[bool, str]:
-        print("dwaawddwa")
+
         try:
             proc = psutil.Process(pid)
             proc.kill()

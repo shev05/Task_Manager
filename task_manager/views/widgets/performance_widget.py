@@ -8,6 +8,9 @@ from PyQt5.QtGui import QColor, QPainter, QPen
 # Импортируем классы для графиков
 from PyQt5.QtChart import QChart, QChartView, QLineSeries, QValueAxis # Убедитесь, что QValueAxis импортирован здесь, т.к. он используется в CoreUsageWidget
 
+# Импортируем наш логгер
+from utils.loggerService.logger import logger
+
 
 class ResourceMeter(QWidget):
     """
@@ -15,6 +18,7 @@ class ResourceMeter(QWidget):
     """
     def __init__(self, parent=None):
         super().__init__(parent)
+        # logger.debug("Инициализация ResourceMeter.") # Может быть много логов, если много метров
         self.value = 0 # Текущее значение в процентах
         self.max_value = 100 # Максимальное значение (обычно 100%)
         # Начальный угол для рисования дуги (90 градусов = верх, в 1/16 долях градуса)
@@ -24,14 +28,18 @@ class ResourceMeter(QWidget):
         # Цвет переднего плана индикатора (загрузки)
         self.foreground_color = QColor(0, 150, 0)
         self.pen_width = 8 # Ширина линии индикатора
+        # logger.debug("ResourceMeter инициализирован.")
+
 
     def set_value(self, value):
         """Устанавливает текущее значение индикатора."""
         self.value = max(0, min(value, self.max_value))
+        # logger.debug(f"ResourceMeter установлен в значение: {self.value:.1f}%")
         self.update() # Запрашиваем перерисовку виджета
 
     def paintEvent(self, event):
         """Обработчик события рисования."""
+        # logger.debug("Рисование ResourceMeter.")
         painter = QPainter(self)
         try:
             painter.setRenderHint(QPainter.Antialiasing) # Включаем сглаживание для лучшего вида
@@ -60,6 +68,8 @@ class ResourceMeter(QWidget):
             painter.setPen(Qt.black)
             # Рисуем текст по центру прямоугольника виджета
             painter.drawText(self.rect(), Qt.AlignCenter, f"{self.value:.1f}%") # Добавил .1f для одного знака после запятой
+        except Exception as e:
+            logger.error(f"Ошибка при рисовании ResourceMeter: {e}")
         finally:
             painter.end() # Завершаем процесс рисования
 
@@ -70,6 +80,7 @@ class CoreUsageWidget(QWidget):
     """
     def __init__(self, core_index, parent=None):
         super().__init__(parent)
+        # logger.debug(f"Инициализация CoreUsageWidget для ядра {core_index + 1}.")
         self.core_index = core_index
         # Метка для отображения текстовой загрузки ядра
         self.usage_label = QLabel(f"ЦП{core_index + 1}: 0.0%") # Нумерация ядер с 1
@@ -114,11 +125,14 @@ class CoreUsageWidget(QWidget):
         layout.setSpacing(5)
         layout.addWidget(self.usage_label)
         layout.addWidget(self.chart_view)
+        # logger.debug(f"CoreUsageWidget для ядра {core_index + 1} инициализирован.")
+
 
     def update_usage(self, usage_percent):
         """Обновляет текстовое значение и график загрузки ядра."""
+        # logger.debug(f"Обновление CoreUsageWidget для ядра {self.core_index + 1}: {usage_percent:.1f}%.")
         self.usage_label.setText(f"ЦП{self.core_index + 1}: {usage_percent:.1f}%")
-        self.update_chart(usage_percent)
+        self.update_chart(new_value=usage_percent)
 
     def update_chart(self, new_value):
         """Добавляет новое значение на график и сдвигает старые точки."""
@@ -145,6 +159,7 @@ class PerformanceWidget(QFrame):
     """
     def __init__(self, title, parent=None):
         super().__init__(parent)
+        logger.info(f"Инициализация PerformanceWidget: '{title}'.")
         # Устанавливаем стиль рамки
         self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
         self.setLineWidth(1)
@@ -170,6 +185,7 @@ class PerformanceWidget(QFrame):
 
         # Добавляем растягиватель, чтобы контент прижимался к верху
         main_layout.addStretch(1)
+        logger.info(f"PerformanceWidget: '{title}' инициализирован.")
 
 
     def add_info_widget(self, widget: QWidget):
@@ -177,6 +193,7 @@ class PerformanceWidget(QFrame):
         Добавляет виджет в секцию информации PerformanceWidget.
         Ожидается QWidget (например, QLabel, ResourceMeter или контейнер для них).
         """
+        # logger.debug(f"Добавление виджета информации в PerformanceWidget '{self.windowTitle() or self.objectName()}'.")
         # Добавляем виджет в горизонтальный макет информации
         self.info_container_layout.addWidget(widget)
 
@@ -185,6 +202,7 @@ class PerformanceWidget(QFrame):
         Добавляет виджет графика (QChartView) или макет с графиками (например, QGridLayout)
         в секцию графиков PerformanceWidget.
         """
+        # logger.debug(f"Добавление графика/макета в PerformanceWidget '{self.windowTitle() or self.objectName()}'.")
         # Проверяем, является ли добавляемый элемент виджетом или макетом
         if isinstance(widget_or_layout, QWidget):
              # Если это виджет (например, QChartView), добавляем его напрямую
@@ -192,3 +210,5 @@ class PerformanceWidget(QFrame):
         elif isinstance(widget_or_layout, QLayout):
              # Если это макет (например, QGridLayout), добавляем его как макет
              self.charts_layout.addLayout(widget_or_layout)
+        else:
+             logger.warning(f"Попытка добавить некорректный тип ({type(widget_or_layout)}) в PerformanceWidget charts_layout.")
