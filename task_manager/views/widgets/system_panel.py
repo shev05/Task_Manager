@@ -1,15 +1,21 @@
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QProgressBar
-from PyQt5.QtCore import Qt
+
+# Импортируем наш логгер
+from utils.loggerService.logger import logger
 
 
 class SystemPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        logger.info("Инициализация SystemPanel.")
         self.cpu_progress = None
         self.mem_progress = None
         self.setup_ui()
+        logger.info("SystemPanel инициализирована.")
+
 
     def setup_ui(self):
+        logger.debug("Настройка UI SystemPanel.")
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
@@ -30,7 +36,10 @@ class SystemPanel(QWidget):
         layout.addSpacing(20)
         layout.addWidget(mem_label)
         layout.addWidget(self.mem_progress)
+        logger.debug("UI SystemPanel настроена.")
+
 
     def update_stats(self, cpu, memory):
+        # logger.debug(f"Обновление статистики SystemPanel: ЦП={cpu:.1f}%, Память={memory:.1f}%.")
         self.cpu_progress.setValue(int(cpu))
         self.mem_progress.setValue(int(memory))
